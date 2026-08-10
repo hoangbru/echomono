@@ -35,6 +35,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  turbopack: {},
 };
 
 // Bắt buộc phải bọc nextConfig bằng withPWA ở đây

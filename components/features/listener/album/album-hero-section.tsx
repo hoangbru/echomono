@@ -1,4 +1,3 @@
-// components/features/album/album-hero-section.tsx
 import Image from "next/image";
 import { AlbumDetail } from "@/types";
 import { formatDate } from "@/utils/format";

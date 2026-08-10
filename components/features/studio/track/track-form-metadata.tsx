@@ -65,9 +65,7 @@ export function TrackFormMetadata({
           <div>
             <input
               type="text"
-              {...register("trackName", {
-                required: "Vui lòng nhập tên bài hát",
-              })}
+              {...register("trackName")}
               placeholder="Tên bài hát *"
               className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-primary outline-none"
             />

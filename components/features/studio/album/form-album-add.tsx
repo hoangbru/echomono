@@ -13,11 +13,15 @@ import { createClient } from "@/utils/supabase/client";
 import { AlbumFormMetadata } from "./album-form-metadata";
 
 export interface AlbumNewFormValues {
-  albumName?: string;
-  artistName?: string;
+  albumName: string;
+  artistName: string;
   albumType: string;
   isPublished: boolean;
   isExplicit: boolean;
+  // Thêm các trường dành cho nhập thủ công
+  releaseDate?: string;
+  totalTracks?: number;
+  coverUrl?: string;
 }
 
 export function FormAlbumAdd() {
@@ -32,6 +36,9 @@ export function FormAlbumAdd() {
       albumType: "ALBUM",
       isPublished: true,
       isExplicit: false,
+      releaseDate: new Date().toISOString().split("T")[0],
+      totalTracks: 1,
+      coverUrl: "",
     },
   });
 
@@ -40,12 +47,14 @@ export function FormAlbumAdd() {
   const [isSearching, setIsSearching] = useState(false);
   const [customError, setCustomError] = useState("");
 
-  // 1. Hàm gọi tìm kiếm linh hoạt (Có thể tìm bằng Tên Nghệ sĩ hoặc Tên Album)
+  // State quản lý chế độ Nhập thủ công
+  const [isManual, setIsManual] = useState(false);
+
+  // 1. Hàm gọi tìm kiếm linh hoạt trên iTunes
   const handleSearch = async () => {
     const albumName = form.getValues("albumName");
     const artistName = form.getValues("artistName");
 
-    // Kiểm tra nếu cả 2 ô đều trống thì báo lỗi
     if (!albumName && !artistName) {
       setCustomError(
         "Vui lòng nhập ít nhất Tên Nghệ sĩ hoặc Tên Album để tìm kiếm!",
@@ -55,40 +64,60 @@ export function FormAlbumAdd() {
 
     setCustomError("");
     setIsSearching(true);
-    // Gọi action truyền cả 2 giá trị để hàm search mới bên lib/itunes xử lý linh hoạt
     const res = await searchAlbumsAction(albumName, artistName);
     setIsSearching(false);
 
     if (res.success && res.data) {
       setSearchResults(res.data);
       if (res.data.length > 0) {
-        setSelectedAlbum(res.data[0]); // Mặc định chọn kết quả đầu tiên trong danh sách
+        setSelectedAlbum(res.data[0]);
       } else {
-        setCustomError("Không tìm thấy Album nào phù hợp với từ khóa này.");
+        setCustomError(
+          "Không tìm thấy Album nào trên iTunes. Vui lòng Bật chế độ Nhập thủ công!",
+        );
       }
     } else {
       setCustomError(res.error || "Không tìm thấy kết quả phù hợp.");
     }
   };
 
-  // 2. Mutation Lưu Album đã chọn xuống Supabase
+  // 2. Mutation Lưu Album xuống Supabase (Xử lý cả 2 chế độ)
   const createAlbumMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedAlbum)
-        throw new Error("Vui lòng tìm và chọn một Album từ danh sách kết quả!");
+      // Chặn nếu đang ở chế độ tìm kiếm mà chưa chọn album nào
+      if (!isManual && !selectedAlbum) {
+        throw new Error(
+          "Vui lòng tìm và chọn một Album từ iTunes, hoặc Bật chế độ Nhập thủ công!",
+        );
+      }
 
       const values = form.getValues();
-      const newAlbum = {
-        itunes_album_id: selectedAlbum.itunes_id,
-        title: selectedAlbum.title,
-        artist_name: selectedAlbum.artist_name,
-        cover_url: selectedAlbum.cover_url,
-        release_date: selectedAlbum.release_date,
-        total_tracks: selectedAlbum.total_tracks,
-        album_type: values.albumType,
-        is_published: values.isPublished,
-        is_explicit: values.isExplicit,
-      };
+
+      // Bóc tách dữ liệu tùy theo chế độ
+      const newAlbum = isManual
+        ? {
+            title: values.albumName || "Unknown Album",
+            artist_name: values.artistName || "Unknown Artist",
+            cover_url: values.coverUrl || "/default-cover.jpg",
+            release_date:
+              values.releaseDate || new Date().toISOString().split("T")[0],
+            total_tracks: Number(values.totalTracks) || 1,
+            album_type: values.albumType,
+            is_published: values.isPublished,
+            is_explicit: values.isExplicit,
+            itunes_album_id: null, // Nhập tay thì không có ID iTunes
+          }
+        : {
+            itunes_album_id: selectedAlbum.itunes_id,
+            title: selectedAlbum.title,
+            artist_name: selectedAlbum.artist_name,
+            cover_url: selectedAlbum.cover_url,
+            release_date: selectedAlbum.release_date,
+            total_tracks: selectedAlbum.total_tracks,
+            album_type: values.albumType,
+            is_published: values.isPublished,
+            is_explicit: values.isExplicit,
+          };
 
       const { data, error } = await supabase
         .from("albums")
@@ -108,7 +137,6 @@ export function FormAlbumAdd() {
     },
   });
 
-  // Tính toán trạng thái form để truyền vào nút Submit
   const currentStatus = createAlbumMutation.isPending
     ? "submitting"
     : createAlbumMutation.isSuccess
@@ -133,7 +161,7 @@ export function FormAlbumAdd() {
         }}
         className="grid grid-cols-1 md:grid-cols-3 gap-8"
       >
-        {/* Cột trái: Hiển thị danh sách ảnh bìa kết quả tìm kiếm để Admin chọn */}
+        {/* Nếu đang nhập tay, giao diện Ảnh bìa bên trái có thể bỏ trống hoặc hiển thị ảnh default */}
         <AlbumFormMedia
           searchResults={searchResults}
           selectedAlbum={selectedAlbum}
@@ -141,18 +169,19 @@ export function FormAlbumAdd() {
           isSearching={isSearching}
         />
 
-        {/* Cột phải: Khung nhập liệu thông tin metadata */}
         <AlbumFormMetadata
           form={form}
           status={currentStatus}
           onSearch={handleSearch}
+          isManual={isManual}
+          setIsManual={setIsManual}
         />
       </form>
 
       <SuccessModal
         isOpen={createAlbumMutation.isSuccess}
         title="Tạo Album thành công!"
-        description="Đang chuyển hướng đến trang thêm album..."
+        description="Đang chuyển hướng đến trang thêm bài hát..."
         onConfirm={() => {}}
       />
     </Fragment>
