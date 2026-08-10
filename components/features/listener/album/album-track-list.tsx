@@ -33,7 +33,8 @@ export function AlbumTrackList({
         title: t.title,
         artistNames: t.artist_name || album.artist_name || "Unknown Artist",
         albumId: album.id,
-        imageUrl: t.cover_url || album.cover_url || "/default-cover.jpg",
+        // SỬA LỖI 1: Xóa t.cover_url vì không còn tồn tại, lấy thẳng từ album
+        imageUrl: album.cover_url || "/default-cover.jpg",
         audioUrl: supabase.storage
           .from("songs_bucket")
           .getPublicUrl(t.audio_path).data.publicUrl,
@@ -41,7 +42,6 @@ export function AlbumTrackList({
       }));
 
       playTrack(formattedTracks[index], formattedTracks);
-      // toast.success(`Đang phát: ${track.title}`); // Có thể bỏ toast này đi cho đỡ phiền khi click liên tục
     } catch (error: any) {
       toast.error("Không thể phát bài hát này.");
     }
@@ -49,11 +49,15 @@ export function AlbumTrackList({
 
   return (
     <div className="mt-4">
-      {/* Header Grid: Tối ưu khoảng cách cho Mobile & Desktop */}
-      <div className="grid grid-cols-[40px_1fr_40px] sm:grid-cols-[50px_1fr_80px] md:grid-cols-[50px_minmax(0,2fr)_minmax(0,1fr)_100px] gap-2 md:gap-4 px-2 md:px-4 py-2 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+      {/* SỬA LỖI 2: Copy y chang class grid-cols từ AlbumTrackRow sang đây để 2 thằng căn lề thẳng tắp */}
+      <div className="grid grid-cols-[40px_1fr_80px] sm:grid-cols-[50px_1fr_90px] md:grid-cols-[50px_minmax(0,2fr)_minmax(0,1fr)_100px] gap-2 md:gap-4 px-2 md:px-4 py-2 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
         <div className="text-center">#</div>
         <div>Tiêu đề</div>
-        <div className="flex justify-center md:justify-end md:pr-8">
+
+        {/* Cột 3 trống để dành cho Desktop giống hệt với Row */}
+        <div className="hidden md:block"></div>
+
+        <div className="flex justify-end md:pr-4">
           <Clock className="w-4 h-4" />
         </div>
       </div>

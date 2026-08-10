@@ -11,6 +11,7 @@ export interface Track {
   audioUrl: string;
   albumId?: string;
   lyrics?: string;
+  albumTitle?: string;
 }
 
 interface PlayerStore {
