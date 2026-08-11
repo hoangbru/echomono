@@ -70,7 +70,7 @@ export async function removeOfflineAlbum(albumId: string): Promise<boolean> {
     await set("offline_tracks", tracksToKeep);
 
     // Xóa file MP3 khỏi Cache Storage
-    const cache = await caches.open("musichub-offline-audio-v1");
+    const cache = await caches.open("echo-offline-audio-v1");
     for (const track of tracksToDelete) {
       await cache.delete(track.audioUrl);
       // Chú ý: Ta không xóa ảnh bìa (imageUrl) ở đây vì có thể các bài hát khác (Single) đang dùng chung ảnh này
