@@ -1,46 +1,39 @@
-import { set, get } from "idb-keyval";
+import { set, get, del } from "idb-keyval";
 import { Track } from "@/hooks/use-player";
 
-// Dùng cho trang "Thư viện Offline"
 export async function getOfflineTracks(): Promise<Track[]> {
   return (await get("offline_tracks")) || [];
 }
 
-async function saveMetadataToIndexedDB(track: Track): Promise<void> {
-  // Lấy danh sách nhạc offline hiện có
-  const offlineTracks: Track[] = (await get("offline_tracks")) || [];
-
-  // Tránh lưu trùng lặp
-  if (!offlineTracks.find((t) => t.id === track.id)) {
-    offlineTracks.push(track);
-    await set("offline_tracks", offlineTracks);
-  }
-}
-
 export async function downloadAudioForOffline(track: Track): Promise<boolean> {
   try {
-    // 1. Mở một "kho" riêng trong Cache Storage
-    const cache = await caches.open("musichub-offline-audio-v1");
-
-    // 2. Fetch file MP3 và Ảnh bìa từ URL đầy đủ
+    // 1. Tải file âm thanh dưới dạng dữ liệu thô (Blob)
     const audioResponse = await fetch(track.audioUrl);
+    if (!audioResponse.ok) throw new Error("Không thể tải nhạc");
+    const audioBlob = await audioResponse.blob();
 
-    // Nếu có imageUrl thì mới tải ảnh
-    let coverResponse: Response | null = null;
+    // Tải ảnh bìa dạng Blob
+    let coverBlob = null;
     if (track.imageUrl && !track.imageUrl.startsWith("/")) {
-      coverResponse = await fetch(track.imageUrl);
+      const coverResponse = await fetch(track.imageUrl);
+      if (coverResponse.ok) coverBlob = await coverResponse.blob();
     }
 
-    if (!audioResponse.ok) throw new Error("Không thể tải file nhạc");
+    // 2. Lưu trực tiếp Blob vào IndexedDB
+    // Lưu file MP3
+    await set(`audio_blob_${track.id}`, audioBlob);
 
-    // 3. Cất file MP3 và Ảnh vào kho
-    await cache.put(track.audioUrl, audioResponse);
-    if (coverResponse && coverResponse.ok && track.imageUrl) {
-      await cache.put(track.imageUrl, coverResponse);
+    // Lưu file Ảnh bìa
+    if (coverBlob) {
+      await set(`cover_blob_${track.id}`, coverBlob);
     }
 
-    // 4. Lưu metadata vào IndexedDB
-    await saveMetadataToIndexedDB(track);
+    // 3. Lưu Metadata (Thông tin bài hát)
+    const offlineTracks: Track[] = (await get("offline_tracks")) || [];
+    if (!offlineTracks.find((t) => t.id === track.id)) {
+      offlineTracks.push(track);
+      await set("offline_tracks", offlineTracks);
+    }
 
     return true;
   } catch (error) {
@@ -51,22 +44,16 @@ export async function downloadAudioForOffline(track: Track): Promise<boolean> {
 
 export async function removeOfflineTrack(track: Track): Promise<boolean> {
   try {
-    // 1. Xóa khỏi danh sách trong IndexedDB
     const offlineTracks: Track[] = (await get("offline_tracks")) || [];
     const newTracks = offlineTracks.filter((t) => t.id !== track.id);
     await set("offline_tracks", newTracks);
 
-    // 2. Mở kho Cache Storage và xóa file âm thanh + ảnh bìa
-    const cache = await caches.open("musichub-offline-audio-v1");
-    await cache.delete(track.audioUrl);
-
-    if (track.imageUrl && !track.imageUrl.startsWith("/")) {
-      await cache.delete(track.imageUrl);
-    }
+    // Xóa Blob khỏi bộ nhớ
+    await del(`audio_blob_${track.id}`);
+    await del(`cover_blob_${track.id}`);
 
     return true;
   } catch (error) {
-    console.error("Lỗi xóa nhạc offline:", error);
     return false;
   }
 }
