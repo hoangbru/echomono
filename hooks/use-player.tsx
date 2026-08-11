@@ -37,6 +37,9 @@ interface PlayerStore {
   playTrack: (track: Track, newQueue?: Track[]) => void;
   playNext: () => void;
   playPrev: () => void;
+
+  // Hành động quản lý danh sách phát
+  addTracksToQueue: (tracks: Track[]) => void;
 }
 
 const shuffleArray = (array: Track[]) => {
@@ -166,4 +169,15 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       isPlaying: true,
     });
   },
+
+  addTracksToQueue: (newTracks) =>
+    set((state) => {
+      // Lọc bỏ những bài đã có trong queue để tránh phát lặp lại
+      const existingIds = new Set(state.queue.map((t) => t.id));
+      const uniqueNewTracks = newTracks.filter((t) => !existingIds.has(t.id));
+
+      return {
+        queue: [...state.queue, ...uniqueNewTracks],
+      };
+    }),
 }));
