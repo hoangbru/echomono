@@ -15,6 +15,9 @@ import {
 } from "@/app/actions/track.action";
 import { createClient } from "@/utils/supabase/client";
 
+// Import hàm làm sạch tên file
+import { slugify } from "@/utils/helpers";
+
 export interface TrackNewFormValues {
   trackName?: string;
   artistName?: string;
@@ -34,11 +37,10 @@ export function FormTrackAdd({ albumId }: FormTrackAddProps) {
   const [audioDuration, setAudioDuration] = useState<number>(0);
   const [customError, setCustomError] = useState("");
 
-  // States quản lý luồng tìm kiếm iTunes
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<any | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [isManual, setIsManual] = useState(false); // Chế độ nhập thủ công
+  const [isManual, setIsManual] = useState(false);
 
   const { data: suggestedTrackNumber = 1 } = useQuery({
     queryKey: ["suggest-track-number", albumId],
@@ -65,7 +67,6 @@ export function FormTrackAdd({ albumId }: FormTrackAddProps) {
     },
   });
 
-  // Hàm gọi API tìm kiếm
   const handleSearchItunes = async () => {
     const tName = form.getValues("trackName");
     const aName = form.getValues("artistName");
@@ -93,9 +94,16 @@ export function FormTrackAdd({ albumId }: FormTrackAddProps) {
           "Vui lòng chọn 1 kết quả từ iTunes hoặc Bật chế độ Nhập thủ công!",
         );
 
+      // ==========================================
+      // ĐỒNG BỘ: TẠO TÊN FILE VÀ THƯ MỤC CHUẨN XÁC
+      // ==========================================
+      const originalName = audioFile.name.split(".").slice(0, -1).join(".");
       const fileExt = audioFile.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `audio/${fileName}`;
+      const safeName = slugify(originalName);
+
+      const fileName = `${safeName}-${Date.now()}.${fileExt}`;
+      const filePath = `audio/albums/${albumId}/${fileName}`;
+      // ==========================================
 
       const { error: uploadError } = await supabase.storage
         .from("songs_bucket")
@@ -104,7 +112,6 @@ export function FormTrackAdd({ albumId }: FormTrackAddProps) {
       if (uploadError)
         throw new Error(`Lỗi tải file lên Storage: ${uploadError.message}`);
 
-      // Xác định dữ liệu Metadata cuối cùng (từ kết quả đã chọn HOẶC từ form nhập tay)
       const finalTitle = isManual ? values.trackName : selectedTrack.title;
       const finalArtist = isManual
         ? values.artistName
@@ -157,7 +164,6 @@ export function FormTrackAdd({ albumId }: FormTrackAddProps) {
           setDuration={setAudioDuration}
         />
 
-        {/* Truyền các props quản lý UI xuống */}
         <TrackFormMetadata
           form={form}
           status={currentStatus}

@@ -6,7 +6,7 @@ interface TrackFormMediaProps {
   audioFile: File | null;
   setAudioFile: (file: File | null) => void;
   setDuration: (duration: number) => void;
-  existingAudioPath?: string; // Dành riêng cho form Edit để hiện audio cũ
+  existingAudioPath?: string;
 }
 
 export function TrackFormMedia({
@@ -58,8 +58,10 @@ export function TrackFormMedia({
                 setAudioFile(file);
                 const audio = document.createElement("audio");
                 audio.src = URL.createObjectURL(file);
+
                 audio.onloadedmetadata = () => {
-                  setDuration(audio.duration);
+                  // ĐÃ SỬA DÒNG NÀY: Nhân 1000 để ra mili-giây và làm tròn thành số nguyên tuyệt đối
+                  setDuration(Math.round(audio.duration * 1000));
                 };
               }
             }}

@@ -12,6 +12,7 @@ import { updateSongAction } from "@/app/actions/track.action";
 import { createClient } from "@/utils/supabase/client";
 import { TrackFormMedia } from "./track-form-media";
 import { TrackFormMetadata } from "./track-form-metadata";
+import { slugify } from "@/utils/helpers";
 
 // Interface đã được tối giản
 export interface TrackEditFormValues {
@@ -72,20 +73,47 @@ export function FormTrackEdit({ albumId, trackId }: FormTrackEditProps) {
     mutationFn: async (values: TrackEditFormValues) => {
       let newAudioPath: string | undefined = undefined;
 
-      if (newAudioFile) {
-        const fileExt = newAudioFile.name.split(".").pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        newAudioPath = `audio/${fileName}`;
+      // Lấy đường dẫn file cũ đang lưu trong DB
+      const oldAudioPath = trackData?.audio_path;
 
+      if (newAudioFile) {
+        // 1. Tách tên file gốc và đuôi mở rộng
+        const originalName = newAudioFile.name
+          .split(".")
+          .slice(0, -1)
+          .join(".");
+        const fileExt = newAudioFile.name.split(".").pop();
+
+        // 2. Dùng helper để làm sạch tên file
+        const safeName = slugify(originalName);
+
+        // 3. Đặt tên file hoàn chỉnh: [tên-gốc-đã-làm-sạch]-[timestamp].[đuôi]
+        const fileName = `${safeName}-${Date.now()}.${fileExt}`;
+
+        // TỔ CHỨC LẠI: Nằm gọn trong thư mục Album
+        newAudioPath = `audio/albums/${albumId}/${fileName}`;
+
+        // Upload file mới
         const { error: uploadError } = await supabase.storage
           .from("songs_bucket")
           .upload(newAudioPath, newAudioFile);
 
         if (uploadError)
           throw new Error(`Lỗi tải file mới: ${uploadError.message}`);
+
+        // Dọn rác file cũ
+        if (oldAudioPath) {
+          const { error: deleteError } = await supabase.storage
+            .from("songs_bucket")
+            .remove([oldAudioPath]);
+
+          if (deleteError) {
+            console.warn("Không thể xóa file rác cũ:", deleteError);
+          }
+        }
       }
 
-      // Payload gọi API được rút gọn tối đa
+      // 3. Cập nhật Database
       const res = await updateSongAction({
         id: trackId,
         albumId: albumId,
