@@ -1,10 +1,3 @@
-import nextPWA from "next-pwa";
-
-const withPWA = nextPWA({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development", // Tắt ở local để đỡ rắc rối khi code
-});
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -38,5 +31,4 @@ const nextConfig = {
   turbopack: {},
 };
 
-// Bắt buộc phải bọc nextConfig bằng withPWA ở đây
-export default withPWA(nextConfig);
+export default nextConfig;
