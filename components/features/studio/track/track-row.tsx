@@ -1,28 +1,20 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Edit2, Globe, Lock, Trash2 } from "lucide-react";
+import { Edit2, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TrackDetail } from "@/types";
+import { formatDuration } from "@/utils/format";
 
 interface TrackRowProps {
-  track: TrackDetail; // Dữ liệu trực tiếp từ Supabase Database
+  track: TrackDetail;
   albumId: string;
   onDelete: (track: TrackDetail) => void;
 }
 
 export function TrackRow({ track, albumId, onDelete }: TrackRowProps) {
   const router = useRouter();
-
-  // Hàm chuyển đổi duration (ms) sang format mm:ss
-  const formatDuration = (ms: number) => {
-    if (!ms) return "--:--";
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-  };
 
   return (
     <tr className="group border-b border-white/5 hover:bg-white/5 transition-colors">

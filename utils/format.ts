@@ -48,10 +48,14 @@ export function formatDate(
 /**
  * Format duration in seconds to MM:SS
  */
-export const formatDuration = (seconds: number | null) => {
-  if (!seconds) return "--:--";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+export const formatDuration = (ms: number | null) => {
+  if (!ms) return "--:--";
+
+  // Bước giải cứu: Đổi mili-giây ra giây
+  const totalSeconds = Math.floor(ms / 1000);
+
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 

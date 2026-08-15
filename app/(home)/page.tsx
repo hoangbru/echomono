@@ -10,7 +10,6 @@ export default async function HomePage() {
     .select("*")
     .eq("is_published", true) // Chỉ lấy album đang công khai
     .order("created_at", { ascending: false }) // Sắp xếp mới nhất
-    .limit(10);
 
   const albums = trendingAlbums || [];
 

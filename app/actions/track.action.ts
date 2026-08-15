@@ -42,22 +42,20 @@ export async function processAndSaveSong(params: ProcessSongParams) {
   const supabase = createClient();
 
   try {
-    // SỬA Ở ĐÂY: Làm tròn thành số nguyên tuyệt đối
-    const durationMs = Math.round(params.fileDuration * 1000);
+    const durationMs = Math.round(params.fileDuration);
 
-    // Vẫn gọi đồng bộ Lyrics bằng thông tin chốt cuối cùng
     const lyrics = await fetchLyrics(
       params.title,
-      params.artistName || "", // Đảm bảo không truyền undefined vào LRCLIB
+      params.artistName || "",
       durationMs,
-    ).catch(() => undefined); // Tránh văng lỗi nếu không có lyrics
+    ).catch(() => undefined);
 
     const newSong = {
       itunes_track_id: params.itunesTrackId || null,
       title: params.title,
       artist_name: params.artistName,
       audio_path: params.audioPath,
-      duration_ms: durationMs, // Lúc này chắc chắn là số nguyên (VD: 196987)
+      duration_ms: durationMs,
       lyrics: lyrics,
       album_id: params.albumId,
       track_number: params.trackNumber,
